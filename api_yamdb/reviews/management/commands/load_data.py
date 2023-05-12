@@ -58,7 +58,7 @@ class Command(BaseCommand):
             for row in reader:
                 name = row['name']
                 year = int(row['year'])
-                category_id = int(row['id'])
+                category_id = int(row['category'])
                 category = Category.objects.get(pk=category_id)
                 title = Title(name=name, year=year, category=category)
                 title.save()
