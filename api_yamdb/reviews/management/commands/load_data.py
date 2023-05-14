@@ -1,10 +1,17 @@
+
 import csv
 import random
 import string
 import os
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
-from reviews.models import User, Category, Genre, Title, Comment, Review
+from reviews.models import User, Category, Genre, Title, Comment, Review, TitleGenre
+from datetime import datetime
+
+
+datetime_str = "2020-01-13T23:20:02.422Z"
+datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 class Command(BaseCommand):
@@ -44,8 +51,8 @@ class Command(BaseCommand):
             reader = csv.reader(file)
             for idx, row in enumerate(reader):
                 if idx == 0:
-                    continue  # skip the header row
-                name = row[0]
+                    continue
+                name = row[1]
                 slug = slugify(name) + '-' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
                 genre = Genre(name=name, slug=slug)
                 genre.save()
@@ -70,15 +77,14 @@ class Command(BaseCommand):
         with open(genre_title_file, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                title_id = int(row['title_id'])
-                genre_id = int(row['genre_id'])
                 try:
-                    genre = Genre.objects.get(pk=genre_id)
-                    genre.titles.add(title_id)
-                    genre.save()
+                    genre = Genre.objects.get(pk=row['genre_id'])
+                    title = Title.objects.get(pk=row['title_id'])
+                    genre_titles = TitleGenre(title=title, genre=genre)
+                    genre_titles.save()
                 except Genre.DoesNotExist:
                     self.stderr.write(self.style.ERROR(
-                        f'Genre with ID "{genre_id}" does not exist'))
+                        f'Genre with ID "{genre}" does not exist'))
 
 
     def load_users(self, path):
@@ -86,50 +92,57 @@ class Command(BaseCommand):
         with open(user_file, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                # Assuming you have fields like username, email, password_hash in the CSV
-                username = row['username']
-                email = row['email']
-                password_hash = row['password_hash']
-                # Create a user object and save it
-                user = User(username=username, email=email,
-                            password=password_hash)
+                user = User(
+                    id=row['id'],
+                    username=row['username'],
+                    email=row['email'],
+                    first_name=row['first_name'],
+                    last_name=row['last_name'],
+                    role=row['role'],
+                    bio=row['bio'])
                 user.save()
                 self.stdout.write(self.style.SUCCESS(
                     f'User "{user.username}" created'))
 
+
     def load_reviews(self, path):
-        reviews_file = path + 'review.csv'
+        reviews_file = os.path.join(path, 'review.csv')
         try:
             with open(reviews_file, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    review = Review(
-                        id=row['id'],
-                        title_id=row['title_id'],
-                        text=row['text'],
-                        author_id=row['author_id'],
-                        score=row['score'],
-                        pub_date=row['pub_date']
-                    )
-                    review.save()
-                    print(f'Review "{review.title_id}" created')
+                    try:
+                        review = Review.objects.create(
+                            title=Title.objects.get(id=row['title_id']),
+                            text=row['text'],
+                            author=User.objects.get(id=row['author']),
+                            score=row['score'],
+                            pub_date=row['pub_date']
+                        )
+                    
+                        self.stdout.write(self.style.SUCCESS(f"Review {row['id']} created"))
+                    except ObjectDoesNotExist:
+                        self.stderr.write(self.style.ERROR(f'Error creating review: Title or User not found: title: {title}, user: {idd}'))
         except FileNotFoundError:
             raise CommandError(f'The file "{reviews_file}" does not exist')
 
+
     def load_comments(self, path):
-        comments_file = path + 'comments.csv'
+        comments_file = os.path.join(path, 'comments.csv')
         try:
             with open(comments_file, 'r', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    comment = Comment(
-                        id=row['id'],
-                        review_id=row['review_id'],
-                        text=row['text'],
-                        author_id=row['author_id'],
-                        pub_date=row['pub_date']
-                    )
-                    comment.save()
-                    print(f'Comment "{comment.id}" created')
+                    try:
+                        comment = Comment.objects.create(
+                            review=Review.objects.get(id=row['review_id']),
+                            text=row['text'],
+                            author=User.objects.get(id=row['author']),
+                            pub_date=row['pub_date']
+                        )
+                        self.stdout.write(self.style.SUCCESS(f'Comment "{comment.id}" created'))
+                    except ObjectDoesNotExist:
+                        self.stderr.write(self.style.ERROR(f'Error creating comment: Review or User not found'))
         except FileNotFoundError:
             raise CommandError(f'The file "{comments_file}" does not exist')
+
