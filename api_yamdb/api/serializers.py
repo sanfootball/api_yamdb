@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from reviews.models import Review, Comment, Category
+
+from reviews.models import Category, Genre, Review, Title, Comment
 from django.forms import ValidationError
 
 
@@ -7,6 +8,34 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
         fields = ('id', 'name', 'slug')
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ('id', 'name', 'slug')
+
+class TitleWriteSerializer(serializers.ModelSerializer):
+    genre = serializers.SlugField(
+        queryset=Genre.objects.all(),
+        slug_field='slug'
+    )
+    category = serializers.SlugField(
+        queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+
+    class Meta:
+        model = Title
+        fields = '__all__'
+
+class TitleReadSerializer(serializers.ModelSerializer):
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
+    rating = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Title
+        fields = '__all__'
 
 
 class CategoryActionSerializer(serializers.ModelSerializer):

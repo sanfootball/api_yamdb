@@ -1,28 +1,39 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, viewsets
-from reviews.models import Category, Review, Title
-from .serializers import CategorySerializer, ReviewSerializer, CommentSerializer
-
+from django.db.models import Avg
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.pagination import PageNumberPagination
-from .permissions import IsAuthorOrModerOrAdmin
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+from .permissions import IsAuthorOrModerOrAdmin, IsAdminOrReadOnly
+from reviews.models import Category, Genre, Review, Title
+from .serializers import CategorySerializer, GenreSerializer, ReviewSerializer, TitleWriteSerializer, TitleReadSerializer, CommentSerializer
+from .mixins import CustomApiMixin
 
 
-class CategoryAPIView(generics.ListCreateDestroyAPIView):
+class CategoryAPIView(CustomApiMixin):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return []
-        elif self.request.method == 'POST':
-            return [permissions.IsAdminUser()]
-        elif self.request.method == 'DELETE':
-            return [permissions.IsAdminUser()]
+class GenreAPIView(CustomApiMixin):
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = (IsAdminOrReadOnly,)
 
-    # Метод get_queryset() переопределен для сортировки категорий по имени
-    def get_queryset(self):
-        return Category.objects.order_by('name')
+class TitleAPIView(viewsets.ModelViewSet):
+    queryset = (
+        Title.objects.all().annotate(rating=Avg('reviews__score')).order_by('-id')
+    )
+    filter_backends = [DjangoFilterBackend]
+    permission_classes = (IsAdminOrReadOnly,)
+
+    def get_serializer_class(self):
+        if self.request.method in ['POST', 'PATCH']:
+            return TitleWriteSerializer
+        return TitleReadSerializer
+    
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
