@@ -10,6 +10,7 @@ from .permissions import IsAuthorOrModerOrAdmin, IsAdminOrReadOnly
 from reviews.models import Category, Genre, Review, Title
 from .serializers import CategorySerializer, GenreSerializer, ReviewSerializer, TitleWriteSerializer, TitleReadSerializer, CommentSerializer
 from .mixins import CustomApiMixin
+from .filters import TitleFilter
 
 
 class CategoryAPIView(CustomApiMixin):
@@ -27,6 +28,7 @@ class TitleAPIView(viewsets.ModelViewSet):
         Title.objects.all().annotate(rating=Avg('reviews__score')).order_by('-id')
     )
     filter_backends = [DjangoFilterBackend]
+    filterset_class = TitleFilter
     permission_classes = (IsAdminOrReadOnly,)
 
     def get_serializer_class(self):
