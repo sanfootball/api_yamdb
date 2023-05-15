@@ -1,6 +1,8 @@
 from rest_framework import serializers
-from reviews.models import Review, Comment
+from reviews.models import Review, Comment, User
 from django.forms import ValidationError
+from rest_framework.validators import UniqueValidator
+from django.contrib.auth.validators import UnicodeUsernameValidator
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -45,3 +47,65 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'review', 'text', 'author', 'pub_date')
         read_only_fields = ('author', 'review', 'pub_date')
+
+
+class SignupUserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        max_length=150,
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+            UnicodeUsernameValidator(),
+        ]
+    )
+
+    class Meta:
+        model = User
+        fields = ['email', 'username']
+
+    def validate_username(self, value):
+        """Валидация поля username, которое не должно использовать имя me."""
+        if 'me' == value:
+            raise serializers.ValidationError(
+                'Имя me недоступно для пользователей',
+            )
+        return value
+
+
+class TokenUserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        max_length=150,
+    )
+
+    class Meta:
+        model = User
+        fields = ['confirmation_code', 'username']
+
+
+class UserSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        max_length=150,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+        ]
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    # role = serializers.ChoiceField(max_length=150)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )

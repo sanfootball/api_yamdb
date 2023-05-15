@@ -19,3 +19,10 @@ class IsAuthorOrModerOrAdmin(permissions.BasePermission):
                     and request.user == obj.author)
             )
         return False
+
+
+class AdminPermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        del view
+        if request.user.role == 'admin' or request.user.is_superuser:
+            return True
