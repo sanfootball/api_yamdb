@@ -15,10 +15,12 @@ class User(AbstractUser):
     username = models.CharField(
         'никнейм пользователя',
         max_length=150,
+        null=True,
         unique=True,
     )
     email = models.EmailField(
         max_length=254,
+        null=True,
         unique=True,
     )
     first_name = models.CharField('имя пользователя', max_length=150, null=True,)
@@ -79,6 +81,7 @@ class Title(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
     
 class TitleGenre(models.Model):
     
