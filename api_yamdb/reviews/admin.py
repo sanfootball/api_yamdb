@@ -16,3 +16,22 @@ class ReviewAdmin(admin.ModelAdmin):
     list_filter = ('pub_date',)
     empty_value_display = '-пусто-'
 
+
+class BaseAdmin(admin.ModelAdmin):
+    empty_value_display = '-пусто-'
+
+
+# @admin.register(User)
+# class UserAdmin(BaseAdmin):
+#     list_display = (
+#         'username',
+#         'email',
+#         'first_name',
+#         'last_name',
+#         'bio',
+#         'role',
+#     )
+#     search_fields = ('username',)
+#     list_filter = ('username',)
+
+
