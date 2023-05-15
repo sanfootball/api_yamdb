@@ -23,8 +23,12 @@ class User(AbstractUser):
         null=True,
         unique=True,
     )
-    first_name = models.CharField('имя пользователя', max_length=150, null=True,)
-    last_name = models.CharField('фамилия пользователя', max_length=150, null=True,)
+    first_name = models.CharField('имя пользователя',
+                                  max_length=150,
+                                  null=True,)
+    last_name = models.CharField('фамилия пользователя',
+                                 max_length=150,
+                                 null=True,)
     bio = models.TextField('о пользователе', null=True,)
     role = models.CharField(choices=ROLE_CHOICES, default=USER, max_length=150)
 
@@ -82,19 +86,19 @@ class Title(models.Model):
     def __str__(self) -> str:
         return self.name
 
-    
+
 class TitleGenre(models.Model):
-    
+
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
-        verbose_name = 'произведение'
+        verbose_name='произведение'
     )
 
     genre = models.ForeignKey(
         Genre,
         on_delete=models.CASCADE,
-        verbose_name = 'жанр'
+        verbose_name='жанр'
     )
 
     class Meta:
