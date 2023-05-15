@@ -1,8 +1,7 @@
 from rest_framework import routers
-
 from django.urls import include, path
 
-from .views import ReviewViewSet, CommentViewSet
+from .views import ReviewViewSet, CommentViewSet, CategoryAPIView
 
 app_name = 'api'
 
@@ -17,4 +16,6 @@ router_v1.register(
 
 urlpatterns = [
     path('v1/', include(router_v1.urls)),
+    path('v1/categories/', CategoryAPIView.as_view(),
+         name='category-list-create-delete'),
 ]

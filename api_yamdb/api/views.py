@@ -1,11 +1,28 @@
-from rest_framework import viewsets
 from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, viewsets
+from reviews.models import Category, Review, Title
+from .serializers import CategorySerializer, ReviewSerializer, CommentSerializer
 
-from reviews.models import Review, Title
-from .serializers import ReviewSerializer, CommentSerializer
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.pagination import PageNumberPagination
 from .permissions import IsAuthorOrModerOrAdmin
+
+
+class CategoryAPIView(generics.ListCreateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return []
+        elif self.request.method == 'POST':
+            return [permissions.IsAdminUser()]
+        elif self.request.method == 'DELETE':
+            return [permissions.IsAdminUser()]
+
+    # Метод get_queryset() переопределен для сортировки категорий по имени
+    def get_queryset(self):
+        return Category.objects.order_by('name')
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -44,3 +61,4 @@ class CommentViewSet(viewsets.ModelViewSet):
             title=self.kwargs.get('title_id')
         )
         serializer.save(author=self.request.user, review=review)
+

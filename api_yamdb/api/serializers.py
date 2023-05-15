@@ -1,7 +1,30 @@
 from rest_framework import serializers
-from reviews.models import Review, Comment
+from reviews.models import Review, Comment, Category
 from django.forms import ValidationError
 
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('id', 'name', 'slug')
+
+
+class CategoryActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('name', 'slug')
+
+    def create(self, validated_data):
+        return Category.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.save()
+        return instance
+
+    def delete(self, instance):
+        instance.delete()
+        
 
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
@@ -45,3 +68,4 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'review', 'text', 'author', 'pub_date')
         read_only_fields = ('author', 'review', 'pub_date')
+
