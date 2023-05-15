@@ -1,9 +1,33 @@
 from rest_framework import serializers
-from reviews.models import Review, Comment, User
+from reviews.models import Review, Comment, User, Category
+
 from django.forms import ValidationError
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.validators import UnicodeUsernameValidator
 
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('id', 'name', 'slug')
+
+
+class CategoryActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('name', 'slug')
+
+    def create(self, validated_data):
+        return Category.objects.create(**validated_data)
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.save()
+        return instance
+
+    def delete(self, instance):
+        instance.delete()
+        
 
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(

@@ -1,5 +1,7 @@
-from rest_framework import filters, viewsets
 from django.shortcuts import get_object_or_404
+from rest_framework import generics, permissions, viewsets, filters
+from reviews.models import Category, Review, Title
+from .serializers import CategorySerializer, ReviewSerializer, CommentSerializer
 
 from reviews.models import Review, Title, User
 from .serializers import (
@@ -11,6 +13,7 @@ from .serializers import (
 )
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, api_view, permission_classes
 
@@ -57,6 +60,23 @@ class UserViewSet(viewsets.ModelViewSet):
     #             serializer.data,
     #             status=status.HTTP_200_OK,
     #         )
+
+
+class CategoryAPIView(generics.ListCreateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return []
+        elif self.request.method == 'POST':
+            return [permissions.IsAdminUser()]
+        elif self.request.method == 'DELETE':
+            return [permissions.IsAdminUser()]
+
+    # Метод get_queryset() переопределен для сортировки категорий по имени
+    def get_queryset(self):
+        return Category.objects.order_by('name')
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -168,3 +188,5 @@ def send_token_jwt(request):
         serializer.error_messages,
         status=status.HTTP_400_BAD_REQUEST,
     )
+
+

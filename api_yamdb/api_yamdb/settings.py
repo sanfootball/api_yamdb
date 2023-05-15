@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 
+AUTH_USER_MODEL = 'reviews.User'
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
