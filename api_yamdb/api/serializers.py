@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from api_yamdb.settings import PATTERN
 from reviews.models import Review, Comment, User, Category
 
 from django.forms import ValidationError
@@ -27,7 +28,7 @@ class CategoryActionSerializer(serializers.ModelSerializer):
 
     def delete(self, instance):
         instance.delete()
-        
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
@@ -74,9 +75,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class SignupUserSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(
-        max_length=150,
-    )
+    username = serializers.RegexField(regex=PATTERN, max_length=150)
     email = serializers.EmailField(
         max_length=254,
         validators=[
@@ -108,6 +107,7 @@ class TokenUserSerializer(serializers.ModelSerializer):
         fields = ['confirmation_code', 'username']
 
 
+
 class UserSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
         max_length=150,
@@ -122,6 +122,103 @@ class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
     # role = serializers.ChoiceField(max_length=150)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class UserUsernameSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        max_length=150,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+        ]
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    # role = serializers.ChoiceField(max_length=150)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+
+
+class UserRetrieveSerializer(serializers.ModelSerializer):
+    """Обрабатывает запрос на предоставление данных учетной записи."""
+    username = serializers.CharField(
+        max_length=150,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+        ]
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+
+
+class UserPartialUpdateSerializer(serializers.ModelSerializer):
+    """Обрабатывает запрос частичное изменение данных учетной записи."""
+    username = serializers.RegexField(regex=PATTERN, max_length=150)
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
 
     class Meta:
         model = User
