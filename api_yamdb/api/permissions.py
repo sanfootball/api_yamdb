@@ -26,3 +26,29 @@ class AdminPermissions(permissions.BasePermission):
         del view
         if request.user.role == 'admin' or request.user.is_superuser:
             return True
+
+
+# class AdminAndSuperUserPermissions(permissions.BasePermission):
+#     def has_permission(self, request, view):
+#         del view
+#         if (request.user.is_staff or request.user.is_superuser and
+#             request.user.is_authenticated):
+#             return True
+
+#     def has_object_permission(self, request, view, obj):
+#         del view
+#         if obj.user.is_staff or obj.user.is_superuser:
+#             return True
+
+
+class AccessUsersMe(permissions.BasePermission):
+    def has_permission(self, request, view):
+        del view
+        if request.user.is_authenticated:
+            return True
+
+    def has_object_permission(self, request, view, obj):
+        del view
+        if (obj.user.role == 'user' or obj.user.role == 'moderator'
+                or obj.user.role == 'admin'):
+            return True

@@ -6,7 +6,15 @@ import os
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.text import slugify
-from reviews.models import User, Category, Genre, Title, Comment, Review, TitleGenre
+from reviews.models import (
+    User,
+    Category,
+    Genre,
+    Title,
+    Comment,
+    Review,
+    TitleGenre,
+)
 from datetime import datetime
 
 
@@ -19,7 +27,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            'path', type=str, help='Path to the directory containing CSV files')
+            'path', type=str, help='Path to the directory containing CSV files'
+        )
 
     def handle(self, *args, **options):
         path = options['path']
@@ -53,10 +62,12 @@ class Command(BaseCommand):
                 if idx == 0:
                     continue
                 name = row[1]
-                slug = slugify(name) + '-' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+                slug = slugify(name) + '-' + ''.join(random.choices(
+                    string.ascii_lowercase + string.digits, k=6))
                 genre = Genre(name=name, slug=slug)
                 genre.save()
-                self.stdout.write(self.style.SUCCESS(f'Genre "{genre.name}" created'))
+                self.stdout.write(
+                    self.style.SUCCESS(f'Genre "{genre.name}" created'))
 
     def load_titles(self, path):
         title_file = os.path.join(path, 'titles.csv')
@@ -86,7 +97,6 @@ class Command(BaseCommand):
                     self.stderr.write(self.style.ERROR(
                         f'Genre with ID "{genre}" does not exist'))
 
-
     def load_users(self, path):
         user_file = os.path.join(path, 'users.csv')
         with open(user_file, 'r', encoding='utf-8') as file:
@@ -104,7 +114,6 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(
                     f'User "{user.username}" created'))
 
-
     def load_reviews(self, path):
         reviews_file = os.path.join(path, 'review.csv')
         try:
@@ -119,13 +128,15 @@ class Command(BaseCommand):
                             score=row['score'],
                             pub_date=row['pub_date']
                         )
-                    
-                        self.stdout.write(self.style.SUCCESS(f"Review {row['id']} created"))
+
+                        self.stdout.write(
+                            self.style.SUCCESS(f"Review {row['id']} created"))
                     except ObjectDoesNotExist:
-                        self.stderr.write(self.style.ERROR(f'Error creating review: Title or User not found: title: {title}, user: {idd}'))
+                        self.stderr.write(
+                            self.style.ERROR('Error creating review:'
+                                             'Title or User not found'))
         except FileNotFoundError:
             raise CommandError(f'The file "{reviews_file}" does not exist')
-
 
     def load_comments(self, path):
         comments_file = os.path.join(path, 'comments.csv')
@@ -140,9 +151,11 @@ class Command(BaseCommand):
                             author=User.objects.get(id=row['author']),
                             pub_date=row['pub_date']
                         )
-                        self.stdout.write(self.style.SUCCESS(f'Comment "{comment.id}" created'))
+                        self.stdout.write(self.style.SUCCESS(
+                            f'Comment "{comment.id}" created'))
                     except ObjectDoesNotExist:
-                        self.stderr.write(self.style.ERROR(f'Error creating comment: Review or User not found'))
+                        self.stderr.write(self.style.ERROR(
+                            'Error creating comment: Review or User not found')
+                        )
         except FileNotFoundError:
             raise CommandError(f'The file "{comments_file}" does not exist')
-
