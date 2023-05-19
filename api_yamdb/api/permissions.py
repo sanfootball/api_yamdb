@@ -21,34 +21,39 @@ class IsAuthorOrModerOrAdmin(permissions.BasePermission):
         return False
 
 
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """Разрешение для админа или любого GET-запроса."""
+    def has_permission(self, request, view):
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_authenticated and request.user.is_admin)
+
+
 class AdminPermissions(permissions.BasePermission):
     def has_permission(self, request, view):
         del view
-        if request.user.role == 'admin' or request.user.is_superuser:
+        if request.user.is_authenticated:
+            return request.user.role == 'admin' or request.user.is_superuser
+
+
+class AdminAndSuperUserPermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        del view
+        if (request.user.is_staff or request.user.is_superuser) and request.user.is_authenticated:
             return True
 
-
-# class AdminAndSuperUserPermissions(permissions.BasePermission):
-#     def has_permission(self, request, view):
-#         del view
-#         if (request.user.is_staff or request.user.is_superuser and
-#             request.user.is_authenticated):
-#             return True
-
-#     def has_object_permission(self, request, view, obj):
-#         del view
-#         if obj.user.is_staff or obj.user.is_superuser:
-#             return True
+#    def has_object_permission(self, request, view, obj):
+#        del view
+#        if obj.user.is_staff or obj.user.is_superuser:
+#            return True
 
 
 class AccessUsersMe(permissions.BasePermission):
-    def has_permission(self, request, view):
-        del view
-        if request.user.is_authenticated:
-            return True
+    # def has_permission(self, request, view):
+    #     del view
+    #     if request.user.is_authenticated:
+    #         return True
 
     def has_object_permission(self, request, view, obj):
         del view
-        if (obj.user.role == 'user' or obj.user.role == 'moderator'
-                or obj.user.role == 'admin'):
+        if (request.user.is_staff or request.user.is_superuser) and request.user.is_admin:
             return True

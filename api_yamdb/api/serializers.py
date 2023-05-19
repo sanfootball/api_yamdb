@@ -1,4 +1,8 @@
 from rest_framework import serializers
+from api.util import (
+    confirmation_code_generation,
+    send_confirmation_code_to_email,
+)
 from api_yamdb.settings import PATTERN
 from reviews.models import Review, Comment, Category, User, Genre, Title
 
@@ -31,15 +35,16 @@ class CategoryActionSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    score = serializers.IntegerField(max_value=10, min_value=1)
     author = serializers.SlugRelatedField(
         slug_field='username',
         read_only=True,
-        default=serializers.CurrentUserDefault(),
+        # default=serializers.CurrentUserDefault(),
     )
-    title = serializers.SlugRelatedField(
-        slug_field='name',
-        read_only=True
-    )
+    # title = serializers.SlugRelatedField(
+    #    slug_field='name',
+    #    read_only=True
+    # )
 
     def validate(self, data):
         request = self.context['request']
@@ -58,7 +63,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         return score
 
     class Meta:
-        fields = ('id', 'title', 'text', 'author', 'pub_date', 'score')
+        fields = ('id', 'text', 'author', 'pub_date', 'score')
         model = Review
 
 
@@ -142,19 +147,16 @@ class TokenUserSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(
-        max_length=150,
-        validators=[
-            UniqueValidator(queryset=User.objects.all()),
-        ]
-    )
+    username = serializers.RegexField(regex=PATTERN, max_length=150)
     email = serializers.EmailField(
         max_length=254,
-        validators=[UniqueValidator(queryset=User.objects.all())]
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+            UnicodeUsernameValidator(),
+        ]
     )
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
-    # role = serializers.ChoiceField(max_length=150)
 
     class Meta:
         model = User
@@ -166,6 +168,14 @@ class UserSerializer(serializers.ModelSerializer):
             'bio',
             'role',
         )
+
+    def validate_username(self, value):
+        """Валидация поля username, которое не должно использовать имя me."""
+        if 'me' == value:
+            raise serializers.ValidationError(
+                'Имя me недоступно для пользователей',
+            )
+        return value
 
 
 class UserUsernameSerializer(serializers.ModelSerializer):
@@ -199,13 +209,13 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
     """Обрабатывает запрос на предоставление данных учетной записи."""
     username = serializers.CharField(
         max_length=150,
-        validators=[
-            UniqueValidator(queryset=User.objects.all()),
-        ]
+        # validators=[
+        #    UniqueValidator(queryset=User.objects.all()),
+        # ]
     )
     email = serializers.EmailField(
         max_length=254,
-        validators=[UniqueValidator(queryset=User.objects.all())]
+        # validators=[UniqueValidator(queryset=User.objects.all())]
     )
 
     class Meta:
@@ -240,3 +250,37 @@ class UserPartialUpdateSerializer(serializers.ModelSerializer):
             'bio',
             'role',
         )
+
+
+class CreateUserSerializer(serializers.ModelSerializer):
+    username = serializers.RegexField(
+        regex=PATTERN,
+        max_length=150,
+        validators=[UniqueValidator(queryset=User.objects.all())],
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+            UnicodeUsernameValidator(),
+        ]
+    )
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+
+    def validate_username(self, value):
+        """Валидация поля username, которое не должно использовать имя me."""
+        if 'me' == value:
+            raise serializers.ValidationError(
+                'Имя me недоступно для пользователей',
+            )
+        return value
