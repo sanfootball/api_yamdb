@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from api_yamdb.settings import PATTERN
-from reviews.models import Review, Comment, Category, User
+from reviews.models import Review, Comment, Category, User, Genre, Title
 
 from django.forms import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -72,6 +72,40 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ('id', 'review', 'text', 'author', 'pub_date')
         read_only_fields = ('author', 'review', 'pub_date')
+
+
+class GenreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ('name', 'slug')
+
+
+class TitlesReadSerializer(serializers.ModelSerializer):
+    genre = GenreSerializer(read_only=True, many=True)
+    category = CategorySerializer(read_only=True)
+    rating = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Title
+        fields = [
+            'id', 'name', 'description', 'year', 'rating', 'genre', 'category']
+
+
+class TitlesEditorSerializer(serializers.ModelSerializer):
+    genre = serializers.SlugRelatedField(
+        slug_field='slug',
+        queryset=Genre.objects.all(),
+        many=True
+    )
+    category = serializers.SlugRelatedField(
+        slug_field='slug',
+        queryset=Category.objects.all(),
+        many=False,
+    )
+
+    class Meta:
+        model = Title
+        fields = ['id', 'name', 'description', 'year', 'genre', 'category']
 
 
 class SignupUserSerializer(serializers.ModelSerializer):

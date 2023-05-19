@@ -1,10 +1,16 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import generics, permissions, viewsets, filters
-from reviews.models import Category, Review, Title, User
+from django.db.models import Avg
+from rest_framework import viewsets, filters
+from reviews.models import Category, Review, Title, User, Genre
+from django_filters.rest_framework import DjangoFilterBackend
+from .mixins import ListCreateDestroyViewSet
 from .serializers import (
     CategorySerializer,
     ReviewSerializer,
     CommentSerializer,
+    GenreSerializer,
+    TitlesEditorSerializer,
+    TitlesReadSerializer,
     SignupUserSerializer,
     TokenUserSerializer,
     UserUsernameSerializer,
@@ -13,7 +19,7 @@ from .serializers import (
     UserSerializer,
 )
 from rest_framework import status
-
+from .filters import TitleFilter
 from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly,
     AllowAny,
@@ -23,7 +29,7 @@ from rest_framework.pagination import PageNumberPagination
 from .permissions import (
     IsAuthorOrModerOrAdmin,
     AdminPermissions,
-    AccessUsersMe,
+    # AccessUsersMe,
 )
 
 from rest_framework.decorators import action, api_view, permission_classes
@@ -98,27 +104,56 @@ class UserViewSet(viewsets.ModelViewSet):
     #     )
 
 
-class CategoryAPIView(generics.ListCreateAPIView):
+# class CategoryAPIView(generics.ListCreateAPIView):
+#   queryset = Category.objects.all()
+#   serializer_class = CategorySerializer
+#
+#   def get_permissions(self):
+#       if self.request.method == 'GET':
+#           return []
+#       elif self.request.method == 'POST':
+#           return [permissions.IsAdminUser()]
+#       elif self.request.method == 'DELETE':
+#           return [permissions.IsAdminUser()]
+#
+#   # Метод get_queryset() переопределен для сортировки категорий по имени
+#   def get_queryset(self):
+#       return Category.objects.order_by('name')
+
+
+class CategoryViewSet(ListCreateDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = (AdminPermissions,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ("name",)
+    lookup_field = "slug"
 
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return []
-        elif self.request.method == 'POST':
-            return [permissions.IsAdminUser()]
-        elif self.request.method == 'DELETE':
-            return [permissions.IsAdminUser()]
 
-    # Метод get_queryset() переопределен для сортировки категорий по имени
-    def get_queryset(self):
-        return Category.objects.order_by('name')
+class TitleViewSet(viewsets.ModelViewSet):
+    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
+    permission_classes = (AdminPermissions,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
+
+    def get_serializer_class(self):
+        if self.request.method in ['POST', 'PATCH']:
+            return TitlesEditorSerializer
+        return TitlesReadSerializer
+
+
+class GenreViewSet(ListCreateDestroyViewSet):
+    queryset = Genre.objects.all()
+    serializer_class = GenreSerializer
+    permission_classes = (AdminPermissions,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ("name",)
+    lookup_field = "slug"
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
-    permission_classes = (IsAuthorOrModerOrAdmin, IsAuthenticatedOrReadOnly,)
-    pagination_class = PageNumberPagination
+    permission_classes = (IsAuthorOrModerOrAdmin,)
 
     def get_queryset(self):
         title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
@@ -132,8 +167,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = (IsAuthorOrModerOrAdmin, IsAuthenticatedOrReadOnly,)
-    pagination_class = PageNumberPagination
+    permission_classes = (IsAuthorOrModerOrAdmin,)
 
     def get_queryset(self):
         review = get_object_or_404(
