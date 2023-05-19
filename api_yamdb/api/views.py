@@ -47,7 +47,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.request.method == 'POST': # and (self.request.user.is_staff or self.request.user.is_superuser):
-            return SignupUserSerializer
+            return CreateUserSerializer
             # return CreateUserSerializer
         return UserUsernameSerializer
     
