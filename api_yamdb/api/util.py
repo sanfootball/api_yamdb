@@ -24,3 +24,12 @@ def send_confirmation_code_to_email(confirmation_code, email):
         [email],  # Это поле "Кому" (можно указать список адресов)
         fail_silently=False,  # Сообщать об ошибках («молчать ли об ошибках?»)
     )
+
+def http_methods_disable(*methods):
+    """Отключение метода используемого при http запросе."""
+    def decorator(cls):
+        cls.http_method_names = [
+            method for method in cls.http_method_names if method not in methods
+        ]
+        return cls
+    return decorator

@@ -6,7 +6,6 @@ from .views import (
     ReviewViewSet,
     CommentViewSet,
     UserViewSet,
-    UserUsernameViewSet,
     send_confirmation_code,
     send_token_jwt,
     data_request_from_users_me,
@@ -26,7 +25,7 @@ router_v1.register(
     CommentViewSet, basename='comments')
 
 router_v1.register('users', UserViewSet)
-router_v1.register('users/<str:username>', UserUsernameViewSet)
+# router_v1.register('users/<str:username>', UserUsernameViewSet)
 
 urlpatterns = [
     path('v1/auth/signup/', send_confirmation_code),

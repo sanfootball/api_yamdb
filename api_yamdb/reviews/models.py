@@ -19,7 +19,7 @@ class User(AbstractUser):
         null=True,
         unique=True,
         validators=[
-            RegexValidator(regex=r'^[\w.@+-]+\z')
+            RegexValidator(regex=r'^[\w.@+-]+\Z')
         ]
     )
     email = models.EmailField(

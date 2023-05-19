@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from api.util import confirmation_code_generation, send_confirmation_code_to_email
 from api_yamdb.settings import PATTERN
 from reviews.models import Review, Comment, User, Category
 
@@ -107,21 +108,17 @@ class TokenUserSerializer(serializers.ModelSerializer):
         fields = ['confirmation_code', 'username']
 
 
-
 class UserSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(
-        max_length=150,
-        validators=[
-            UniqueValidator(queryset=User.objects.all()),
-        ]
-    )
+    username = serializers.RegexField(regex=PATTERN, max_length=150)
     email = serializers.EmailField(
         max_length=254,
-        validators=[UniqueValidator(queryset=User.objects.all())]
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+            UnicodeUsernameValidator(),
+        ]
     )
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
-    # role = serializers.ChoiceField(max_length=150)
 
     class Meta:
         model = User
@@ -134,10 +131,87 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
         )
 
+    def validate_username(self, value):
+        """Валидация поля username, которое не должно использовать имя me."""
+        if 'me' == value:
+            raise serializers.ValidationError(
+                'Имя me недоступно для пользователей',
+            )
+        return value
 
 
+USER = 'user'
+MODERATOR = 'moderator'
+ADMIN = 'admin'
+
+ROLE_CHOICES = (
+    (USER, 'аутентифицированный пользователь'),
+    (MODERATOR, 'модератор'),
+    (ADMIN, 'администратор'),
+)
 
 
+class CreateUserSerializer(serializers.ModelSerializer):
+    username = serializers.RegexField(
+        regex=PATTERN,
+        max_length=150,
+        validators=[
+            UniqueValidator(queryset=User.objects.all())
+        ],
+    )
+
+    email = serializers.EmailField(
+        max_length=254,
+        validators=[
+            UniqueValidator(queryset=User.objects.all()),
+        ]
+    )
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    bio = serializers.CharField()
+    role = serializers.ChoiceField(choices=ROLE_CHOICES, default=USER)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
+
+    def validate_username(self, value):
+        """Валидация поля username, которое не должно использовать имя me."""
+        if 'me' == value:
+            raise serializers.ValidationError(
+                'Имя me недоступно для пользователей',
+            )
+        return value
+
+    # def create(self, validated_data):
+    #     user = User.objects.create(
+    #         username=validated_data.get('username'),
+    #         email=validated_data.get('email'),
+    #         # role=None,
+    #         confirmation_code=confirmation_code_generation(),
+    #     )
+    #     send_confirmation_code_to_email(user.confirmation_code, user.email)
+    #     return user
+    
+    # def validate_username(self, value):
+    #     """Валидация поля username, которое не должно использовать имя me."""
+    #     if 'me' == value:
+    #         raise serializers.ValidationError(
+    #             'Имя me недоступно для пользователей',
+    #         )
+    #     return value
+    
+    
+
+    # def create(self, validated_data):
+    #     return User(**validated_data)
 
 
 
@@ -189,13 +263,13 @@ class UserRetrieveSerializer(serializers.ModelSerializer):
     """Обрабатывает запрос на предоставление данных учетной записи."""
     username = serializers.CharField(
         max_length=150,
-        validators=[
-            UniqueValidator(queryset=User.objects.all()),
-        ]
+        # validators=[
+        #     UniqueValidator(queryset=User.objects.all()),
+        # ]
     )
     email = serializers.EmailField(
         max_length=254,
-        validators=[UniqueValidator(queryset=User.objects.all())]
+        # validators=[UniqueValidator(queryset=User.objects.all())]
     )
     
     class Meta:
@@ -230,3 +304,4 @@ class UserPartialUpdateSerializer(serializers.ModelSerializer):
             'bio',
             'role',
         )
+

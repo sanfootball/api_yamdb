@@ -28,26 +28,26 @@ class AdminPermissions(permissions.BasePermission):
             return True
 
 
-# class AdminAndSuperUserPermissions(permissions.BasePermission):
-#     def has_permission(self, request, view):
-#         del view
-#         if request.user.is_staff or request.user.is_superuser and request.user.is_authenticated:
-#             return True
-        
-#     def has_object_permission(self, request, view, obj):
-#         del view
-#         if obj.user.is_staff or obj.user.is_superuser:
-#             return True
-
+class AdminAndSuperUserPermissions(permissions.BasePermission):
+    def has_permission(self, request, view):
+        del view
+        if (request.user.is_staff or request.user.is_superuser) and request.user.is_authenticated:
+            return True
 
 
 class AccessUsersMe(permissions.BasePermission):    
-    def has_permission(self, request, view):
+    # def has_permission(self, request, view):
+    #     del view
+    #     if request.user.is_authenticated:
+    #         return True
+    
+     def has_object_permission(self, request, view, obj):
         del view
-        if request.user.is_authenticated:
+        if (request.user.is_staff or request.user.is_superuser) and request.user.is_admin:
             return True
         
-    def has_object_permission(self, request, view, obj):
-        del view
-        if obj.user.role == 'user' or obj.user.role == 'moderator' or obj.user.role == 'admin':
-            return True
+
+    # def has_object_permission(self, request, view, obj):
+    #     del view
+    #     if obj.user.role == 'user' or obj.user.role == 'moderator' or obj.user.role == 'admin':
+    #         return True

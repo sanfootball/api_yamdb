@@ -13,9 +13,10 @@ from .serializers import (
     UserRetrieveSerializer,
     UserPartialUpdateSerializer,
     UserSerializer,
+    CreateUserSerializer,
 )
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny, IsAdminUser
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action, api_view, permission_classes
@@ -23,20 +24,98 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsAuthorOrModerOrAdmin, AdminPermissions, AccessUsersMe
-
+from .permissions import IsAuthorOrModerOrAdmin, AdminPermissions, AdminAndSuperUserPermissions, AccessUsersMe
+from rest_framework.exceptions import MethodNotAllowed
 from api.util import (
     confirmation_code_generation,
     send_confirmation_code_to_email,
+    http_methods_disable,
 )
 
 
-class UserUsernameViewSet(viewsets.ModelViewSet):
+@http_methods_disable('put')
+class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserUsernameSerializer
+    # serializer_class = UserSerializer
     lookup_field = 'username'
-    permission_classes = (AdminPermissions, )
-    http_method_names = ['get', 'patch', 'delete']
+    # IsAdminUser, 
+    permission_classes = (IsAuthenticated, AdminPermissions)
+    pagination_class = PageNumberPagination
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username', )
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST': # and (self.request.user.is_staff or self.request.user.is_superuser):
+            return SignupUserSerializer
+            # return CreateUserSerializer
+        return UserUsernameSerializer
+    
+    # def create(self, request, *args, **kwargs):
+    #     if request.method == 'POST' and (request.user.is_staff or request.user.is_superuser):
+    #         serializer = CreateUserSerializer(data=request.data)
+    #         serializer.is_valid(raise_exception=True)
+    #         serializer.save()
+    #         return Response(
+    #             serializer.data,
+    #             status=status.HTTP_201_CREATED,
+    #         )
+    #     return Response(
+    #         status=status.HTTP_400_BAD_REQUEST,
+    #     )
+
+
+
+    # def perform_create(self, serializer):
+    #     return super().perform_create(serializer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def http_methods_disable(*methods):
+#     def decorator(cls):
+#         cls.http_method_names = [
+#             method for method in cls.http_method_names if method not in methods
+#         ]
+#         return cls
+#     return decorator
+# class UserUsernameViewSet(mixins.RetrieveModelMixin,
+#                           mixins.UpdateModelMixin,
+#                           mixins.DestroyModelMixin,
+#                           viewsets.GenericViewSet):
+# @http_methods_disable('put')
+# class UserUsernameViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserUsernameSerializer
+#     lookup_field = 'username'
+#     permission_classes = (AdminPermissions, IsAuthenticated)
+#     http_method_names = ['get', 'patch' 'delete']
+    
+    # def update(self, request, pk=None):
+    #     response = {'message': 'Update function is not offered in this path.'}
+    #     return Response(response, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    # def update(self, request, pk=None):
+    #     if request.method == "put"
+    #         raise MethodNotAllowed('PUT', detail='Method "PUT" not allowed')
     
     # def get_serializer_class(self):
     #     """Выбор нужного сериализатора, в зависимости от значения action."""
@@ -58,14 +137,8 @@ class UserUsernameViewSet(viewsets.ModelViewSet):
     #     return Response(serializer.data) 
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    lookup_field = 'username'
-    permission_classes = (IsAuthenticated, AdminPermissions)
-    pagination_class = PageNumberPagination
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('username', )
+    # http_method_names = ['post', 'get', 'patch' 'delete']
+    
 
     # def create(self, request):
     #     if request.user.role == 'admin':
@@ -221,18 +294,20 @@ def send_token_jwt(request):
 
 
 @api_view(['GET', 'PATCH'])
-@permission_classes([IsAuthenticated, ])
+@permission_classes([IsAuthenticated, AccessUsersMe])
 def data_request_from_users_me(request):
     """предоставление данных учетной записи пользователя."""
-    user = request.user
+    # user = get_object_or_404(User, pk=request.user.id)
+    user = get_object_or_404(User, username=request.user.username)
     if request.method == 'GET':
-        serializer = UserRetrieveSerializer(user, data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            return Response(
-                serializer.data,
-                status=status.HTTP_200_OK,
-            )
+        serializer = UserRetrieveSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
     if request.method == 'PATCH' and 'role' not in request.data:
+        # user = get_object_or_404(User, pk=request.user.id)
         serializer = UserPartialUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -241,3 +316,27 @@ def data_request_from_users_me(request):
                 status=status.HTTP_200_OK,
             )
     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+# @api_view(['GET', 'PATCH'])
+# @permission_classes([IsAuthenticated, ])
+# def data_request_from_users_me(request):
+#     """предоставление данных учетной записи пользователя."""
+#     user = get_object_or_404(User, pk=request.user.id)
+#     # user = request.user
+#     if request.method == 'GET':
+#         serializer = UserRetrieveSerializer(user, data=request.data)
+#         if serializer.is_valid(raise_exception=True):
+#             return Response(
+#                 serializer.data,
+#                 status=status.HTTP_200_OK,
+#             )
+#     if request.method == 'PATCH' and 'role' not in request.data:
+#         serializer = UserPartialUpdateSerializer(user, data=request.data, partial=True)
+#         if serializer.is_valid(raise_exception=True):
+#             serializer.save()
+#             return Response(
+#                 serializer.data,
+#                 status=status.HTTP_200_OK,
+#             )
+#     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
