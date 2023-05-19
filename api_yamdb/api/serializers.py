@@ -1,4 +1,7 @@
+import datetime
 from rest_framework import serializers
+from django.shortcuts import get_object_or_404
+
 from api.util import (
     confirmation_code_generation,
     send_confirmation_code_to_email,
@@ -48,12 +51,15 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         request = self.context['request']
-        title_id = self.context['title_id']
-        if request.method == 'POST':
-            if Review.objects.filter(title=title_id,
-                                     author=request.user).exists():
-                raise ValidationError(
-                    'Более 1 отзыва на произведение не допустимо')
+        title_id = self.context.get('view').kwargs.get('title_id')
+        title = get_object_or_404(Title, id=title_id)
+        if (
+            request.method == 'POST'
+            and Review.objects.filter(title=title,
+                                      author=request.user).exists()
+        ):
+            raise ValidationError(
+                'Более 1 отзыва на произведение не допустимо')
         return data
 
     def validate_score(self, score):
@@ -104,13 +110,21 @@ class TitlesEditorSerializer(serializers.ModelSerializer):
     )
     category = serializers.SlugRelatedField(
         slug_field='slug',
-        queryset=Category.objects.all(),
-        many=False,
+        queryset=Category.objects.all()
     )
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
-        fields = ['id', 'name', 'description', 'year', 'genre', 'category']
+        fields = [
+            'id', 'name', 'description', 'year', 'rating', 'genre', 'category']
+
+    def validate_year(self, data):
+        if data >= datetime.now().year:
+            raise ValidationError(
+                'Год создания не может быть больше текущего года!'
+            )
+        return data
 
 
 class SignupUserSerializer(serializers.ModelSerializer):

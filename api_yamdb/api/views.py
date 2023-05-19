@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.db.models import Avg
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, permissions
 from reviews.models import Category, Review, Title, User, Genre
 from django_filters.rest_framework import DjangoFilterBackend
 from .mixins import ListCreateDestroyViewSet
@@ -241,15 +241,23 @@ class CategoryViewSet(ListCreateDestroyViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    serializer_class = TitlesEditorSerializer
     queryset = Title.objects.annotate(rating=Avg('reviews__score'))
-    permission_classes = (AdminPermissions,)
+    permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
 
+    # def get_queryset(self):
+    #    new_queryset = Title.objects.annotate(rating=Avg('reviews__score'))
+    #    return new_queryset
+
     def get_serializer_class(self):
-        if self.request.method in ['POST', 'PATCH']:
-            return TitlesEditorSerializer
-        return TitlesReadSerializer
+        if (
+            self.request.user.is_authenticated is False
+            or self.request.method in permissions.SAFE_METHODS
+        ):
+            return TitlesReadSerializer
+        return TitlesEditorSerializer
 
 
 class GenreViewSet(ListCreateDestroyViewSet):
