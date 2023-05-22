@@ -121,7 +121,7 @@ class Command(BaseCommand):
                 reader = csv.DictReader(file)
                 for row in reader:
                     try:
-                        review = Review.objects.create(
+                        Review.objects.create(
                             title=Title.objects.get(id=row['title_id']),
                             text=row['text'],
                             author=User.objects.get(id=row['author']),
