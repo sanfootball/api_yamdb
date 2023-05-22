@@ -1,6 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import RegexValidator
 
 
 class User(AbstractUser):
@@ -18,9 +17,6 @@ class User(AbstractUser):
         max_length=150,
         null=True,
         unique=True,
-        validators=[
-            RegexValidator(regex=r'^[\w.@+-]+\z')
-        ]
     )
     email = models.EmailField(
         max_length=254,
@@ -109,6 +105,12 @@ class TitleGenre(models.Model):
     class Meta:
         verbose_name = 'произведение и жанр'
         verbose_name_plural = 'произведения и жанры'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'genre'],
+                name='unique_title_genre_pair'
+            )
+        ]
 
     def __str__(self) -> str:
         return f'{self.title}, жанр - {self.genre}'
@@ -137,6 +139,12 @@ class Review(models.Model):
         verbose_name = 'отзыв'
         verbose_name_plural = 'отзывы'
         ordering = ('-pub_date',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'author'],
+                name='unique_title_author'
+            )
+        ]
 
     def __str__(self) -> str:
         return self.text

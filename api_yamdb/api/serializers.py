@@ -2,11 +2,7 @@ import datetime
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 
-from api.util import (
-    confirmation_code_generation,
-    send_confirmation_code_to_email,
-)
-from api_yamdb.settings import PATTERN
+from api_yamdb.settings import PATTERN, PATTERN_SLUG
 from reviews.models import Review, Comment, Category, User, Genre, Title
 
 from django.forms import ValidationError
@@ -17,7 +13,11 @@ from django.contrib.auth.validators import UnicodeUsernameValidator
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ('id', 'name', 'slug')
+        fields = ('name', 'slug')
+        lookup_field = 'slug'
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
 
 
 class CategoryActionSerializer(serializers.ModelSerializer):
@@ -49,6 +49,10 @@ class ReviewSerializer(serializers.ModelSerializer):
     #    read_only=True
     # )
 
+    class Meta:
+        fields = ('id', 'text', 'author', 'pub_date', 'score')
+        model = Review
+
     def validate(self, data):
         request = self.context['request']
         title_id = self.context.get('view').kwargs.get('title_id')
@@ -59,47 +63,54 @@ class ReviewSerializer(serializers.ModelSerializer):
                                       author=request.user).exists()
         ):
             raise ValidationError(
-                'Более 1 отзыва на произведение не допустимо')
+                'Более 1 отзыва на произведение не доступно')
         return data
 
-    def validate_score(self, score):
-        if score < 1 or score > 10:
-            raise serializers.ValidationError(
-                'Рейтинг произведения должен быть от 1 до 10')
-        return score
-
-    class Meta:
-        fields = ('id', 'text', 'author', 'pub_date', 'score')
-        model = Review
+    # def validate_score(self, score):
+    #   if score < 1 or score > 10:
+    #       raise serializers.ValidationError(
+    #           'Рейтинг произведения должен быть от 1 до 10')
+    #   return score
 
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         read_only=True, slug_field='username'
     )
-    review = serializers.ReadOnlyField(source='review.id')
+    # review = serializers.ReadOnlyField(source='review.id')
 
     class Meta:
         model = Comment
-        fields = ('id', 'review', 'text', 'author', 'pub_date')
-        read_only_fields = ('author', 'review', 'pub_date')
+        fields = ('id', 'text', 'author', 'pub_date')
+        read_only_fields = ('author', 'pub_date')
 
 
 class GenreSerializer(serializers.ModelSerializer):
+    slug = serializers.RegexField(
+        regex=PATTERN_SLUG,
+        max_length=50,
+        validators=[
+            UniqueValidator(queryset=Genre.objects.all()),
+        ],
+    )
+
     class Meta:
         model = Genre
+        lookup_field = 'slug'
+        extra_kwargs = {
+            'url': {'lookup_field': 'slug'}
+        }
         fields = ('name', 'slug')
 
 
 class TitlesReadSerializer(serializers.ModelSerializer):
-    genre = GenreSerializer(read_only=True, many=True)
+    genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
     rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
-        fields = [
-            'id', 'name', 'description', 'year', 'rating', 'genre', 'category']
+        fields = '__all__'
 
 
 class TitlesEditorSerializer(serializers.ModelSerializer):
@@ -112,15 +123,14 @@ class TitlesEditorSerializer(serializers.ModelSerializer):
         slug_field='slug',
         queryset=Category.objects.all()
     )
-    rating = serializers.IntegerField(read_only=True)
+    # rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
-        fields = [
-            'id', 'name', 'description', 'year', 'rating', 'genre', 'category']
+        fields = '__all__'
 
     def validate_year(self, data):
-        if data >= datetime.now().year:
+        if data >= datetime.datetime.today().year:
             raise ValidationError(
                 'Год создания не может быть больше текущего года!'
             )
