@@ -86,6 +86,7 @@ class Title(models.Model):
     genre = models.ManyToManyField(
         Genre,
         related_name='titles',
+        # through='TitleGenre'
     )
     category = models.ForeignKey(
         Category,
@@ -102,34 +103,34 @@ class Title(models.Model):
         return self.name
 
 
-# class TitleGenre(models.Model):
-#   """Промежуточная модель для реализации отношения многие ко многим."""
-#   title = models.ForeignKey(
-#       Title,
-#       on_delete=models.CASCADE,
-#       verbose_name='Произведение',
-#       related_name='titles'
-#   )
-#
-#   genre = models.ForeignKey(
-#       Genre,
-#       on_delete=models.CASCADE,
-#       verbose_name='Жанр',
-#       related_name='genres',
-#   )
-#
-#   class Meta:
-#       verbose_name = 'Произведение и жанр'
-#       verbose_name_plural = 'Произведения и жанры'
-#       constraints = [
-#           models.UniqueConstraint(
-#               fields=['title', 'genre'],
-#               name='unique_title_genre_pair'
-#           )
-#       ]
-#
-#   def __str__(self) -> str:
-#       return f'{self.title}, жанр - {self.genre}'
+class TitleGenre(models.Model):
+    """Промежуточная модель для реализации отношения многие ко многим."""
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE,
+        verbose_name='Произведение',
+        related_name='titles'
+    )
+
+    genre = models.ForeignKey(
+        Genre,
+        on_delete=models.CASCADE,
+        verbose_name='Жанр',
+        related_name='genres',
+    )
+
+    class Meta:
+        verbose_name = 'Произведение и жанр'
+        verbose_name_plural = 'Произведения и жанры'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'genre'],
+                name='unique_title_genre_pair'
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f'{self.title}, жанр - {self.genre}'
 
 
 class Review(models.Model):
