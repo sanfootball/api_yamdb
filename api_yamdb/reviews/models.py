@@ -85,8 +85,7 @@ class Title(models.Model):
     description = models.TextField('Описание')
     genre = models.ManyToManyField(
         Genre,
-        related_name='titles',
-        # through='TitleGenre'
+        related_name='titles'
     )
     category = models.ForeignKey(
         Category,

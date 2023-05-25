@@ -70,12 +70,14 @@ class Command(BaseCommand):
                 if created:
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f'Genre "{genre.name}" created with slug "{genre.slug}"')
+                            f'Genre "{genre.name}" created'
+                            'with slug "{genre.slug}"')
                     )
                 else:
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f'Genre "{genre.name}" already exists with slug "{genre.slug}"')
+                            f'Genre "{genre.name}" already exists'
+                            'with slug "{genre.slug}"')
                     )
 
     def load_titles(self, path):
@@ -93,9 +95,11 @@ class Command(BaseCommand):
                     name=name, year=year, category=category
                 )
                 if created:
-                    self.stdout.write(self.style.SUCCESS(f'Title "{title.name}" created'))
+                    self.stdout.write(self.style.SUCCESS(
+                        f'Title "{title.name}" created'))
                 else:
-                    self.stdout.write(self.style.SUCCESS(f'Title "{title.name}" already exists'))
+                    self.stdout.write(self.style.SUCCESS(
+                        f'Title "{title.name}" already exists'))
 
     def get_object_by_id(self, obj, pk):
         try:
@@ -191,7 +195,8 @@ class Command(BaseCommand):
                                 f"Review {review.id} updated"))
                     except ObjectDoesNotExist:
                         self.stderr.write(
-                            self.style.ERROR('Error creating review: Title or User not found'))
+                            self.style.ERROR('Error creating review:'
+                                             'Title or User not found'))
         except FileNotFoundError:
             raise CommandError(f'The file "{reviews_file}" does not exist')
 
