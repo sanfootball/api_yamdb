@@ -3,6 +3,8 @@ from pathlib import Path
 from datetime import timedelta
 
 
+SHOW_WORDS = 15
+
 AUTH_USER_MODEL = 'reviews.User'
 
 BASE_DIR = Path(__file__).resolve().parent.parent

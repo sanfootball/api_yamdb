@@ -14,9 +14,8 @@ from .serializers import (
     SignupUserSerializer,
     TokenUserSerializer,
     UserUsernameSerializer,
-    UserRetrieveSerializer,
-    UserPartialUpdateSerializer,
     CreateUserSerializer,
+    UserSerializer,
 )
 from rest_framework import status
 from .filters import TitleFilter
@@ -66,6 +65,10 @@ def send_confirmation_code(request):
     Обработка данных пользователя поступивших с api/v1/auth/signup/
     и отправка confirmation_code на email пользователя.
     """
+    # user, created = User.objects.get_or_create(
+    #    **serializer.validated_data,
+    #    confirmation_code=confirmation_code)
+
     if User.objects.filter(username=request.data.get('username')).exists():
         if User.objects.get(
             username=request.data.get('username')
@@ -85,22 +88,18 @@ def send_confirmation_code(request):
             status=status.HTTP_200_OK,
         )
     serializer = SignupUserSerializer(data=request.data)
-    if serializer.is_valid(raise_exception=True):
-        confirmation_code = confirmation_code_generation()
-        user = User.objects.create(
-            username=serializer.validated_data.get('username'),
-            email=serializer.validated_data.get('email'),
-            confirmation_code=confirmation_code
-        )
-        send_confirmation_code_to_email(user.confirmation_code, user.email)
+    serializer.is_valid(raise_exception=True)
+    confirmation_code = confirmation_code_generation()
+    user = User.objects.create(
+        username=serializer.validated_data.get('username'),
+        email=serializer.validated_data.get('email'),
+        confirmation_code=confirmation_code
+    )
+    send_confirmation_code_to_email(user.confirmation_code, user.email)
 
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
-        )
     return Response(
-        serializer.error_messages,
-        status=status.HTTP_400_BAD_REQUEST,
+        serializer.data,
+        status=status.HTTP_200_OK,
     )
 
 
@@ -112,22 +111,18 @@ def send_token_jwt(request):
     и возвращение в ответ на запрос access токен.
     """
     serializer = TokenUserSerializer(data=request.data)
-    if serializer.is_valid(raise_exception=True):
-        username = serializer.validated_data.get('username')
-        confirmation_code = serializer.validated_data.get('confirmation_code')
-        user = get_object_or_404(User, username=username)
-        if user.confirmation_code == confirmation_code:
-            access_jwt_token = AccessToken.for_user(user)
-            return Response(
-                f'token: {access_jwt_token}',
-                status=status.HTTP_200_OK,
-            )
+    serializer.is_valid(raise_exception=True)
+    username = serializer.validated_data.get('username')
+    confirmation_code = serializer.validated_data.get('confirmation_code')
+    user = get_object_or_404(User, username=username)
+    if user.confirmation_code == confirmation_code:
+        access_jwt_token = AccessToken.for_user(user)
         return Response(
-            'Введен не верный confirmation_code.',
-            status=status.HTTP_400_BAD_REQUEST,
+            f'token: {access_jwt_token}',
+            status=status.HTTP_200_OK,
         )
     return Response(
-        serializer.error_messages,
+        'Введен не верный confirmation_code.',
         status=status.HTTP_400_BAD_REQUEST,
     )
 
@@ -137,26 +132,20 @@ def send_token_jwt(request):
 def data_request_from_users_me(request):
     """предоставление данных учетной записи пользователя."""
     user = get_object_or_404(User, username=request.user.username)
+    serializer = UserSerializer(user, data=request.data,
+                                partial=True)
+    serializer.is_valid(raise_exception=True)
     if request.method == 'GET':
-        serializer = UserRetrieveSerializer(user, data=request.data,
-                                            partial=True)
-        serializer.is_valid(raise_exception=True)
         return Response(
             serializer.data,
             status=status.HTTP_200_OK,
         )
     if request.method == 'PATCH' and 'role' not in request.data:
-        serializer = UserPartialUpdateSerializer(
-            user,
-            data=request.data,
-            partial=True
+        serializer.save()
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
         )
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response(
-                serializer.data,
-                status=status.HTTP_200_OK,
-            )
     return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
@@ -172,7 +161,8 @@ class CategoryViewSet(ListCreateDestroyViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitlesEditorSerializer
-    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
+    queryset = Title.objects.select_related('category').annotate(
+        rating=Avg('reviews__score'))
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter

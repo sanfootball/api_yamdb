@@ -1,7 +1,4 @@
-
 import csv
-import random
-import string
 import os
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
@@ -62,12 +59,24 @@ class Command(BaseCommand):
                 if idx == 0:
                     continue
                 name = row[1]
-                slug = slugify(name) + '-' + ''.join(random.choices(
-                    string.ascii_lowercase + string.digits, k=6))
-                genre = Genre(name=name, slug=slug)
-                genre.save()
-                self.stdout.write(
-                    self.style.SUCCESS(f'Genre "{genre.name}" created'))
+                base_slug = slugify(name).lower()
+                slug = base_slug
+                counter = 1
+                while Genre.objects.filter(slug=slug).exists():
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+                genre, created = Genre.objects.get_or_create(
+                    name=name, defaults={'slug': slug})
+                if created:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f'Genre "{genre.name}" created with slug "{genre.slug}"')
+                    )
+                else:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f'Genre "{genre.name}" already exists with slug "{genre.slug}"')
+                    )
 
     def load_titles(self, path):
         title_file = os.path.join(path, 'titles.csv')
@@ -77,11 +86,25 @@ class Command(BaseCommand):
                 name = row['name']
                 year = int(row['year'])
                 category_id = int(row['category'])
-                category = Category.objects.get(pk=category_id)
-                title = Title(name=name, year=year, category=category)
-                title.save()
-                self.stdout.write(self.style.SUCCESS(
-                    f'Title "{title.name}" created'))
+                if not self.get_object_by_id(Category, category_id):
+                    continue
+                category = self.get_object_by_id(Category, category_id)
+                title, created = Title.objects.get_or_create(
+                    name=name, year=year, category=category
+                )
+                if created:
+                    self.stdout.write(self.style.SUCCESS(f'Title "{title.name}" created'))
+                else:
+                    self.stdout.write(self.style.SUCCESS(f'Title "{title.name}" already exists'))
+
+    def get_object_by_id(self, obj, pk):
+        try:
+            value = obj.objects.get(pk=pk)
+        except obj.DoesNotExist:
+            self.stderr.write(self.style.ERROR(
+                f'{obj.__name__} with ID "{pk}" does not exist'))
+            return False
+        return value
 
     def load_genre_titles(self, path):
         genre_title_file = os.path.join(path, 'genre_title.csv')
@@ -91,28 +114,54 @@ class Command(BaseCommand):
                 try:
                     genre = Genre.objects.get(pk=row['genre_id'])
                     title = Title.objects.get(pk=row['title_id'])
-                    genre_titles = TitleGenre(title=title, genre=genre)
-                    genre_titles.save()
+                    genre_title, created = TitleGenre.objects.get_or_create(
+                        title=title,
+                        genre=genre
+                    )
+                    if created:
+                        self.stdout.write(self.style.SUCCESS(
+                            f'TitleGenre {genre_title.id} created'))
+                    else:
+                        self.stdout.write(self.style.SUCCESS(
+                            f'TitleGenre {genre_title.id} already exists'))
                 except Genre.DoesNotExist:
                     self.stderr.write(self.style.ERROR(
-                        f'Genre with ID "{genre}" does not exist'))
+                        f'Genre with ID "{row["genre_id"]}" does not exist'))
+                except Title.DoesNotExist:
+                    self.stderr.write(self.style.ERROR(
+                        f'Title with ID "{row["title_id"]}" does not exist'))
 
     def load_users(self, path):
         user_file = os.path.join(path, 'users.csv')
         with open(user_file, 'r', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                user = User(
-                    id=row['id'],
-                    username=row['username'],
-                    email=row['email'],
-                    first_name=row['first_name'],
-                    last_name=row['last_name'],
-                    role=row['role'],
-                    bio=row['bio'])
-                user.save()
-                self.stdout.write(self.style.SUCCESS(
-                    f'User "{user.username}" created'))
+                user_id = row['id']
+                username = row['username']
+                email = row['email']
+                first_name = row['first_name']
+                last_name = row['last_name']
+                role = row['role']
+                bio = row['bio']
+
+                user, created = User.objects.update_or_create(
+                    id=user_id,
+                    defaults={
+                        'username': username,
+                        'email': email,
+                        'first_name': first_name,
+                        'last_name': last_name,
+                        'role': role,
+                        'bio': bio
+                    }
+                )
+
+                if created:
+                    self.stdout.write(self.style.SUCCESS(
+                        f'User "{user.username}" created'))
+                else:
+                    self.stdout.write(self.style.SUCCESS(
+                        f'User "{user.username}" updated'))
 
     def load_reviews(self, path):
         reviews_file = os.path.join(path, 'review.csv')
@@ -121,20 +170,28 @@ class Command(BaseCommand):
                 reader = csv.DictReader(file)
                 for row in reader:
                     try:
-                        Review.objects.create(
-                            title=Title.objects.get(id=row['title_id']),
-                            text=row['text'],
-                            author=User.objects.get(id=row['author']),
-                            score=row['score'],
-                            pub_date=row['pub_date']
+                        title_id = row['title_id']
+                        author_id = row['author']
+                        defaults = {
+                            'text': row['text'],
+                            'score': row['score'],
+                            'pub_date': row['pub_date']
+                        }
+                        review, created = Review.objects.update_or_create(
+                            title_id=title_id,
+                            author_id=author_id,
+                            defaults=defaults
                         )
 
-                        self.stdout.write(
-                            self.style.SUCCESS(f"Review {row['id']} created"))
+                        if created:
+                            self.stdout.write(self.style.SUCCESS(
+                                f"Review {review.id} created"))
+                        else:
+                            self.stdout.write(self.style.SUCCESS(
+                                f"Review {review.id} updated"))
                     except ObjectDoesNotExist:
                         self.stderr.write(
-                            self.style.ERROR('Error creating review:'
-                                             'Title or User not found'))
+                            self.style.ERROR('Error creating review: Title or User not found'))
         except FileNotFoundError:
             raise CommandError(f'The file "{reviews_file}" does not exist')
 
@@ -145,6 +202,8 @@ class Command(BaseCommand):
                 reader = csv.DictReader(file)
                 for row in reader:
                     try:
+                        if not self.get_object_by_id(Review, row['review_id']):
+                            continue
                         comment = Comment.objects.create(
                             review=Review.objects.get(id=row['review_id']),
                             text=row['text'],
