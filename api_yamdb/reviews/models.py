@@ -44,7 +44,7 @@ class User(AbstractUser):
     def str(self) -> str:
         if self.username is not None:
             return self.username
-        return 'NULL'
+        return f'{self.Meta.verbose_name} с {self.pk}'
 
 
 class Category(models.Model):
@@ -78,6 +78,7 @@ class Title(models.Model):
     name = models.CharField('Название произведения', max_length=256)
     year = models.SmallIntegerField(
         verbose_name='Год выпуска',
+        db_index=True,
         validators=[
             MaxValueValidator(
                 datetime.datetime.now().year,
@@ -85,13 +86,14 @@ class Title(models.Model):
     description = models.TextField('Описание')
     genre = models.ManyToManyField(
         Genre,
-        related_name='titles'
+        related_name='titles',
+        through='TitleGenre',
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         null=True,
-        related_name='titles',
+        related_name='titles'
     )
 
     class Meta:

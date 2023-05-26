@@ -51,7 +51,7 @@ class TitleAdmin(BaseAdmin):
     )
 
     search_fields = ('name',)
-    list_filter = ('name',)
+    list_filter = ('name', 'year')
 
 
 @admin.register(Review)
@@ -65,7 +65,7 @@ class ReviewAdmin(BaseAdmin):
     )
 
     search_fields = ('title',)
-    list_filter = ('title',)
+    list_filter = ('title', 'pub_date')
 
 
 @admin.register(Comment)
