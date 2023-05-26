@@ -80,7 +80,8 @@ class TitlesReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = [
+            'id', 'name', 'year', 'description', 'genre', 'category', 'rating']
 
 
 class TitlesEditorSerializer(serializers.ModelSerializer):
@@ -101,24 +102,39 @@ class TitlesEditorSerializer(serializers.ModelSerializer):
 
 class SignupUserSerializer(serializers.ModelSerializer):
     username = serializers.RegexField(regex=PATTERN, max_length=150)
-    email = serializers.EmailField(
-        max_length=254,
-        validators=[
-            UniqueValidator(queryset=User.objects.all()),
-            UnicodeUsernameValidator(),
-        ]
-    )
+    email = serializers.EmailField(max_length=254)
 
     class Meta:
         model = User
         fields = ['email', 'username']
 
     def validate_username(self, value):
-        """Валидация поля username, которое не должно использовать имя me."""
+        """Валидация поля username."""
+        if User.objects.filter(email=self.initial_data.get('email')).exists():
+            if User.objects.get(
+                email=self.initial_data.get('email')
+            ).username != value:
+                raise serializers.ValidationError(
+                    'username не соответствует указанному'
+                    'email при регистрации',
+                )
         if 'me' == value:
             raise serializers.ValidationError(
                 'Имя me недоступно для пользователей',
             )
+        return value
+
+    def validate_email(self, value):
+        """Валидация поля email."""
+        if User.objects.filter(username=self.initial_data.get(
+                               'username')).exists():
+            if User.objects.get(
+                username=self.initial_data.get('username')
+            ).email != value:
+                raise serializers.ValidationError(
+                    'email не соответствует указанному'
+                    'username при регистрации',
+                )
         return value
 
 

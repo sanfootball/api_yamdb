@@ -65,42 +65,16 @@ def send_confirmation_code(request):
     Обработка данных пользователя поступивших с api/v1/auth/signup/
     и отправка confirmation_code на email пользователя.
     """
-    # user, created = User.objects.get_or_create(
-    #    **serializer.validated_data,
-    #    confirmation_code=confirmation_code)
-
-    if User.objects.filter(username=request.data.get('username')).exists():
-        if User.objects.get(
-            username=request.data.get('username')
-        ).email != request.data.get('email'):
-            return Response(
-                request.data,
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = User.objects.get(username=request.data.get('username'))
-        user.confirmation_code = confirmation_code_generation()
-        user.save(update_fields=['confirmation_code'])
-        send_confirmation_code_to_email(user.confirmation_code, user.email)
-
-        return Response(
-            request.data,
-            status=status.HTTP_200_OK,
-        )
     serializer = SignupUserSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    confirmation_code = confirmation_code_generation()
-    user = User.objects.create(
+    user, _ = User.objects.get_or_create(
         username=serializer.validated_data.get('username'),
         email=serializer.validated_data.get('email'),
-        confirmation_code=confirmation_code
     )
+    user.confirmation_code = confirmation_code_generation()
+    user.save(update_fields=['confirmation_code'])
     send_confirmation_code_to_email(user.confirmation_code, user.email)
-
-    return Response(
-        serializer.data,
-        status=status.HTTP_200_OK,
-    )
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -161,8 +135,8 @@ class CategoryViewSet(ListCreateDestroyViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitlesEditorSerializer
-    queryset = Title.objects.select_related('category').annotate(
-        rating=Avg('reviews__score'))
+    queryset = Title.objects.select_related('category').prefetch_related(
+        'genre').annotate(rating=Avg('reviews__score'))
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
@@ -194,7 +168,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         title = get_object_or_404(Title, id=self.kwargs.get('title_id'))
-        new_queryset = title.reviews.all().order_by('id')
+        new_queryset = title.reviews.select_related(
+            'title', 'author').order_by('id')
         return new_queryset
 
     def perform_create(self, serializer):
