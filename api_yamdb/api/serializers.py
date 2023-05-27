@@ -110,31 +110,28 @@ class SignupUserSerializer(serializers.ModelSerializer):
 
     def validate_username(self, value):
         """Валидация поля username."""
-        if User.objects.filter(email=self.initial_data.get('email')).exists():
-            if User.objects.get(
-                email=self.initial_data.get('email')
-            ).username != value:
-                raise serializers.ValidationError(
-                    'username не соответствует указанному'
-                    'email при регистрации',
-                )
+        if (User.objects.filter(username=value).exists()
+                and User.objects.get(username=value).email
+                != self.initial_data.get('email')):
+            raise serializers.ValidationError(
+                'username зарегистрированного пользователя'
+                'не соответствует email.'
+            )
         if 'me' == value:
             raise serializers.ValidationError(
-                'Имя me недоступно для пользователей',
+                'Имя me недоступно для пользователей'
             )
         return value
 
     def validate_email(self, value):
         """Валидация поля email."""
-        if User.objects.filter(username=self.initial_data.get(
-                               'username')).exists():
-            if User.objects.get(
-                username=self.initial_data.get('username')
-            ).email != value:
-                raise serializers.ValidationError(
-                    'email не соответствует указанному'
-                    'username при регистрации',
-                )
+        if (User.objects.filter(email=value).exists()
+                and User.objects.get(email=value).username
+                != self.initial_data.get('username')):
+            raise serializers.ValidationError(
+                'email зарегистрированного пользователя'
+                'не соответствует username.'
+            )
         return value
 
 
