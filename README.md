@@ -156,3 +156,6 @@ python manage.py runserver
 http://127.0.0.1:8000/redoc/
 ```
 
+## Автор
+Трубников Александр  
+petrovskii1980@mail.ru
